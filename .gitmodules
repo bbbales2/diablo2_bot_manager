@@ -1,0 +1,4 @@
+[submodule "diablo2_vnc_viewer"]
+	path = diablo2_vnc_viewer
+	url = https://github.com/bbbales2/diablo2_vnc_viewer.git
+	branch = master
