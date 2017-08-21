@@ -76,7 +76,7 @@ for i in range(0, N):
     print "Diablo2 game found at pid {0}".format(pid)
     os.remove(os.path.expanduser("~/.vnc/xstartup"))
     
-    cmd = 'python diablo2_vnc_viewer/vncviewer.py --depth=32 --bot={0} --host=localhost --display=1 --fast --password={1} --botDataFile={2} --botLog={3}/{4}.log'.format(args.Ai, args.password, args.data, args.outputFolder, i)
+    cmd = 'python diablo2_vnc_viewer/vncviewer.py --depth=32 --bot={0} --host=localhost --display=1 --fast --password={1} --botDataFile={2} --botLog={3}/{4}.log --gamePid={5}'.format(args.Ai, args.password, args.data, args.outputFolder, i, pid)
     print "Executing: '{0}'".format(cmd)
     handle = subprocess.Popen(cmd, shell = True)
     startTime = time.time()
