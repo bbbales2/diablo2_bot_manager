@@ -18,6 +18,7 @@ parser.add_argument('-T', type = float, default = -1, help = 'Maximum time to ru
 parser.add_argument('--password', type = str, default = 'wackamole', help = 'Default password for Diablo 2 vnc server (I use wackamole)')
 parser.add_argument('--data', type = str, default = '', help = 'Optional file to pass to bots')
 parser.add_argument('--ignore', default = False, action = 'store_true', help = 'If output folder exists, just overwrite stuff in it')
+parser.add_argument('--headless', default = False, action = 'store_true', help = 'Run bots in headless mode -- no pygame video output')
 
 if os.path.exists(os.path.expanduser("~/.vnc/xstartup")):
     print "Save your ~/.vnc/xstartup file somewhere and delete the original before running this script"
@@ -61,7 +62,7 @@ for i in range(0, N):
     f.write("wine ~/.wine/drive_c/Program\ Files\ \(x86\)/Diablo\ II/Diablo\ II.exe -w -ns\n")
     f.close()
     os.chmod(os.path.expanduser("~/.vnc/xstartup"), 0775)
-    cmd = 'vncserver -localhost -geometry 640x480 -depth 16 -deferupdate 1 :1'
+    cmd = 'vncserver -localhost -geometry 640x480 -depth 16 -deferupdate 1 :1 -alwaysshared'
     print "Executing: '{0}'".format(cmd)
     subprocess.Popen(cmd, shell = True).communicate()
     print "VNC server started on port localhost:1"
@@ -82,7 +83,13 @@ for i in range(0, N):
     print "Diablo2 game found at pid {0}".format(pid)
     os.remove(os.path.expanduser("~/.vnc/xstartup"))
     
-    cmd = 'python diablo2_vnc_viewer/vncviewer.py --depth=32 --bot={0} --host=localhost --display=1 --fast --password={1} --botDataFile={2} --botLog={3}/{4}.log --gamePid={5}'.format(args.Ai, args.password, args.data, args.outputFolder, i, pid)
+    cmd = ' '.join(['python diablo2_vnc_viewer/vncviewer.py --depth=32 --host=localhost --display=1 --fast',
+                    '--bot={0}'.format(args.Ai),
+                    '--password={0}'.format(args.password),
+                    '--botDataFile={0}'.format(args.data),
+                    '--botLog={0}/{1}.log'.format(args.outputFolder, i),
+                    '--gamePid={0}'.format(pid),
+                    '--headless={0}'.format('1' if args.headless else '0')])
     print "Executing: '{0}'".format(cmd)
     handle = subprocess.Popen(cmd, shell = True)
     startTime = time.time()
