@@ -11,12 +11,13 @@ import signal
 import sys
 
 parser = argparse.ArgumentParser(description='Manage a bunch of running Diablo2 bots')
-parser.add_argument('Ai', type = str, help = 'Python file that runs AI script')
-parser.add_argument('outputFolder', type = str, default = 1, help = 'Output folder where ')
+parser.add_argument('--Ai', type = str, default = '', help = 'Python file that runs AI script')
+parser.add_argument('--outputFolder', type = str, default = 'output', help = 'Output folder where result logs are stored')
 parser.add_argument('-N', type = int, default = 1, help = 'Number of copies of bot to run')
 parser.add_argument('-T', type = float, default = -1, help = 'Maximum time to run bot for')
 parser.add_argument('--password', type = str, default = 'wackamole', help = 'Default password for Diablo 2 vnc server (I use wackamole)')
 parser.add_argument('--data', type = str, default = '', help = 'Optional file to pass to bots')
+parser.add_argument('--ignore', default = False, action = 'store_true', help = 'If output folder exists, just overwrite stuff in it')
 
 if os.path.exists(os.path.expanduser("~/.vnc/xstartup")):
     print "Save your ~/.vnc/xstartup file somewhere and delete the original before running this script"
@@ -24,7 +25,12 @@ if os.path.exists(os.path.expanduser("~/.vnc/xstartup")):
 
 args = parser.parse_args()
 
-os.mkdir(args.outputFolder)
+if os.path.exists(args.outputFolder):
+    if not args.ignore:
+        print "Output folder '{0}' exists. Either run with --ignore or move this folder before running".format(args.outputFolder)
+        exit(-1)
+else:
+    os.mkdir(args.outputFolder)
 
 N = args.N
 
