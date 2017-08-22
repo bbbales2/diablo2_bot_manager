@@ -10,6 +10,7 @@ import shutil
 import signal
 import sys
 import select
+import threading
 
 parser = argparse.ArgumentParser(description='Manage a bunch of running Diablo2 bots')
 parser.add_argument('--Ai', type = str, default = '', help = 'Python file that runs AI script')
@@ -21,6 +22,7 @@ parser.add_argument('--data', type = str, default = '', help = 'Optional file to
 parser.add_argument('--ignore', default = False, action = 'store_true', help = 'Overwrite existing output and vnc config')
 parser.add_argument('--headless', default = False, action = 'store_true', help = 'Run bots in headless mode -- no pygame video output')
 parser.add_argument('--suppress', default = False, action = 'store_true', help = 'Suppress messages printed from vncviewer')
+parser.add_argument('--parallel', type = int, default = 1, help = 'Number of bots to run in parallel')
 
 args = parser.parse_args()
 
@@ -36,17 +38,20 @@ if os.path.exists(args.outputFolder):
 else:
     os.mkdir(args.outputFolder)
 
+if args.parallel > args.N:
+    print "Warning: Number of parallel threads exceeds number of jobs to run. This is a mistake"
+
 N = args.N
 
+Xdisplays = set(range(1, args.parallel + 1))
+
+threads = {}
+
 def cleanupVNC():
-    subprocess.Popen('vncserver -kill :1', shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
-    print "Killing VNC server :1"
-
-    try:
-        os.remove(os.path.expanduser("~/.vnc/xstartup"))
-    except:
-        pass
-
+    for Xdisplay in Xdisplays:
+        subprocess.Popen('vncserver -kill :{0}'.format(Xdisplay), shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
+        print "Killing VNC server :{0}".format(Xdisplay)
+        
 def cleanup(signal, frame):
     cleanupVNC()
     
@@ -81,29 +86,29 @@ def getRunningGames():
 # Clean up any leftovers before we start
 cleanupVNC()
 
-for i in range(0, N):
-    print "Running bot {0} of {1}".format(i, N)
+def startBot(botId, Xdisplay):
+    print "Running bot {0} of {1}".format(botId, N)
     # Prepare startup script
     f = open(os.path.expanduser("~/.vnc/xstartup"), "w")
     f.write("#!/bin/sh\n")
-    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -w\n".format(i))
+    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -w\n".format(botId + 1))
     f.close()
     os.chmod(os.path.expanduser("~/.vnc/xstartup"), 0775)
 
     # Get currently running games
     oldGamePids = getRunningGames()
-    
+
     # Start vnc client
-    cmd = 'vncserver -localhost -geometry 640x480 -depth 16 -deferupdate 1 :1 -alwaysshared'
+    cmd = 'vncserver :{0} -localhost -geometry 800x600 -deferupdate 1 -depth 16 -alwaysshared'.format(Xdisplay)
     print "Executing: '{0}'".format(cmd)
     handle = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     stdout, stderr = handle.communicate()
     if handle.returncode != 0:
         print stdout
         print stderr
-        print "Failed to start vncserver for bot {0} of {1}, return code = {2}".format(handle.returncode)
+        print "Failed to start vncserver for bot {0} of {1}, return code = {2}".format(botId, N, handle.returncode)
         exit(-1)
-    print "VNC server started on port localhost:1"
+    print "VNC server started on port localhost:{0}".format(Xdisplay)
 
     # Wait on Diablo 2 to start and get new pid
     startTime = time.time()
@@ -116,14 +121,14 @@ for i in range(0, N):
             pid = newGames.pop()
             break
 
-        if time.time() - startTime > 500.0:
+        if time.time() - startTime > 5.0:
             print "Diablo 2 game didn't start within 5 seconds"
             exit(-1)
     print "Diablo2 game found at pid {0}".format(pid)
-    os.remove(os.path.expanduser("~/.vnc/xstartup"))
 
     # Start VNC client (with bot script)
-    cmd = ' '.join(['python diablo2_vnc_viewer/vncviewer.py --depth=32 --host=localhost --display=1 --fast',
+    cmd = ' '.join(['python diablo2_vnc_viewer/vncviewer.py --depth=32 --host=localhost --fast',
+                    '--display={0}'.format(Xdisplay),
                     '--bot={0}'.format(args.Ai),
                     '--password={0}'.format(args.password),
                     '--botDataFile={0}'.format(args.data),
@@ -135,7 +140,12 @@ for i in range(0, N):
     startTime = time.time()
     print "VNC bot started"
 
+    return handle
+
+def monitorBot(botId, handle, Xdisplay):
     # Wait on timeout of process
+    startTime = time.time()
+    
     while True:
         if handle.poll() is not None:
             break
@@ -144,11 +154,11 @@ for i in range(0, N):
         if handle.stdout in r:
             line = handle.stdout.readline().strip()
             if not args.suppress:
-                print "stdout {0}/{1}: {2}".format(i, N, line)
+                print "stdout {0}/{1}: {2}".format(botId, N, line)
         if handle.stderr in r:
             line = handle.stderr.readline().strip()
             if not args.suppress:
-                print "stderr {0}/{1}: {2}".format(i, N, line)
+                print "stderr {0}/{1}: {2}".format(botId, N, line)
 
         currentTime = time.time()
         if args.T > 0 and currentTime - startTime > args.T:
@@ -158,5 +168,29 @@ for i in range(0, N):
     print "Bot finished"
 
     # Clean it up!
-    subprocess.Popen('vncserver -kill :1', shell = True).communicate()
+    subprocess.Popen('vncserver -kill :{0}'.format(Xdisplay), shell = True).communicate()
     print "Killing VNC server"
+
+# Run all N bot instances using args.parallel threads
+for i in range(0, N):
+    if len(threads) >= args.parallel:
+        to_cleanup = []
+        while len(to_cleanup) == 0:
+            for Xdisplay, thread in threads.iteritems():
+                if not thread.is_alive():
+                    to_cleanup.append(Xdisplay)
+
+            time.sleep(0.1)
+
+        for Xdisplay in to_cleanup:
+            threads.pop(Xdisplay)
+
+    Xdisplay = (Xdisplays - set(threads.keys())).pop()
+    handle = startBot(i, Xdisplay)
+    thread = threading.Thread(target = monitorBot, args = (i, handle, Xdisplay))
+    thread.start()
+    threads[Xdisplay] = thread
+
+print "Waiting on threads to finish"
+for thread in threads.values():
+    thread.join()
