@@ -91,7 +91,7 @@ def startBot(botId, Xdisplay):
     # Prepare startup script
     f = open(os.path.expanduser("~/.vnc/xstartup"), "w")
     f.write("#!/bin/sh\n")
-    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -w\n".format(botId + 1))
+    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -lq -w -nosave\n".format(botId + 1))
     f.close()
     os.chmod(os.path.expanduser("~/.vnc/xstartup"), 0775)
 
@@ -99,7 +99,7 @@ def startBot(botId, Xdisplay):
     oldGamePids = getRunningGames()
 
     # Start vnc client
-    cmd = 'vncserver :{0} -localhost -geometry 800x600 -deferupdate 1 -depth 16 -alwaysshared'.format(Xdisplay)
+    cmd = 'vncserver :{0} -localhost -geometry 800x600 -deferupdate 5 -depth 16 -alwaysshared'.format(Xdisplay)
     print "Executing: '{0}'".format(cmd)
     handle = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     stdout, stderr = handle.communicate()
@@ -127,7 +127,7 @@ def startBot(botId, Xdisplay):
     print "Diablo2 game found at pid {0}".format(pid)
 
     # Start VNC client (with bot script)
-    cmd = ' '.join(['python diablo2_vnc_viewer/vncviewer.py --depth=32 --host=localhost --fast',
+    cmd = ' '.join(['python diablo2_vnc_viewer/vncviewer.py --depth=32 --fast --host=localhost',
                     '--display={0}'.format(Xdisplay),
                     '--bot={0}'.format(args.Ai),
                     '--password={0}'.format(args.password),
