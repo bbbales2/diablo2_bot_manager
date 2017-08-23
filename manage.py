@@ -107,6 +107,7 @@ def startBot(botId, Xdisplay):
         print stdout
         print stderr
         print "Failed to start vncserver for bot {0} of {1}, return code = {2}".format(botId, N, handle.returncode)
+        cleanupVNC()
         exit(-1)
     print "VNC server started on port localhost:{0}".format(Xdisplay)
 
@@ -116,6 +117,7 @@ def startBot(botId, Xdisplay):
         newGames = getRunningGames() - oldGamePids
         if len(newGames) > 1:
             print "Too many new games appeared. Something is wrong"
+            cleanupVNC()
             exit(-1)
         elif len(newGames) == 1:
             pid = newGames.pop()
@@ -123,6 +125,7 @@ def startBot(botId, Xdisplay):
 
         if time.time() - startTime > 5.0:
             print "Diablo 2 game didn't start within 5 seconds"
+            cleanupVNC()
             exit(-1)
     print "Diablo2 game found at pid {0}".format(pid)
 
