@@ -99,7 +99,7 @@ def startBot(botId, Xdisplay):
     oldGamePids = getRunningGames()
 
     # Start vnc client
-    cmd = 'vncserver :{0} -localhost -geometry 800x600 -deferupdate 5 -depth 16 -alwaysshared'.format(Xdisplay)
+    cmd = 'vncserver :{0} -localhost -geometry 800x600 -deferupdate 1 -depth 16 -alwaysshared'.format(Xdisplay)
     print "Executing: '{0}'".format(cmd)
     handle = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     stdout, stderr = handle.communicate()
