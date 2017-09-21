@@ -91,7 +91,7 @@ def startBot(botId, Xdisplay):
     # Prepare startup script
     f = open(os.path.expanduser("~/.vnc/xstartup"), "w")
     f.write("#!/bin/sh\n")
-    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -lq -w -nosave -seed 2\n".format(botId + 1))
+    f.write("wine explorer /desktop=diablo{0},640x480 'C:\Program Files (x86)\Diablo II\Diablo II.exe' -ns -lq -w -nosave -seed {1}\n".format(botId + 1, [10, 11, 0, 2, 1, 8][botId % 6]))
     f.close()
     os.chmod(os.path.expanduser("~/.vnc/xstartup"), 0775)
 
